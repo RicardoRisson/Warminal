@@ -1,10 +1,12 @@
 #include <stdio.h>
+#include <stdbool.h>
 
 #define MAX_VIZINHOS 8
 #define MAX_TERRITORIOS_CONTINENTE 16
 #define MAX_JOGADORES 4
 
 // ================= CONTINENTES =================
+
 #define CONT_AMERICA_SUL 0
 #define CONT_AMERICA_NORTE 1
 #define CONT_AFRICA 2
@@ -65,6 +67,23 @@
 
 #define TOTAL_TERRITORIOS 42
 
+// ================= OBJETIVOS =================
+
+#define OBJ_1 0
+#define OBJ_2 1
+#define OBJ_3 2
+#define OBJ_4 3
+#define OBJ_5 4
+#define OBJ_6 5
+#define OBJ_7 6
+#define OBJ_8 7
+#define OBJ_9 8
+#define OBJ_10 9
+#define OBJ_11 10
+#define OBJ_12 11
+
+#define TOTAL_OBJETIVOS 12
+
 // ================= STRUCTS =================
 
 typedef struct {
@@ -77,6 +96,8 @@ typedef struct {
 
     int vizinhos[MAX_VIZINHOS];
     int num_vizinhos;
+
+    bool eh_bonus;
 } Territorio;
 
 typedef struct {
@@ -85,9 +106,106 @@ typedef struct {
 
     int territorios[MAX_TERRITORIOS_CONTINENTE];
     int num_territorios;
-
+    
     int bonus_completo;
 } Continente;
+
+typedef struct {
+    int id;
+    char texto[300];
+    int dono;
+    bool status_code;
+    bool status_win;
+} Objetivo;
+
+// ================= CARTAS =================
+
+Objetivo Objetivos[TOTAL_OBJETIVOS] = {
+{
+    .id = OBJ_1,
+    .texto = "Destruir Totalmente os\nEXÉRCITOS BRANCOS\n\nSe é vocẽ quem possui os exercitos brancos\nou se o jogador que os possui foi eliminado por outro\nseu objetivo passa a ser\n conquistar 24 territorios",
+    .dono = -1,
+    .status_code = false,
+    .status_win = false,
+},
+{
+    .id = OBJ_2,
+    .texto = "Destruir Totalmente os\nEXÉRCITOS AMARELOS\n\nSe é vocẽ quem possui os exercitos amarelos\nou se o jogador que os possui foi eliminado por outro\nseu objetivo passa a ser\n conquistar 24 territorios",
+    .dono = -1,    
+    .status_code = false,
+    .status_win = false,
+},
+{
+    .id = OBJ_3,
+    .texto = "Destruir Totalmente os\nEXÉRCITOS PRETOS\n\nSe é vocẽ quem possui os exercitos pretos\nou se o jogador que os possui foi eliminado por outro\nseu objetivo passa a ser\n conquistar 24 territorios",
+    .dono = -1,
+    .status_code = false,
+    .status_win = false,
+},
+{
+    .id = OBJ_4,
+    .texto = "Destruir Totalmente os\nEXÉRCITOS VERDES\n\nSe é vocẽ quem possui os exercitos verdes\nou se o jogador que os possui foi eliminado por outro\nseu objetivo passa a ser\n conquistar 24 territorios",
+    .dono = -1,
+    .status_code = false,
+    .status_win = false,
+},
+{
+    .id = OBJ_5,
+    .texto = "Conquistar completamente a AMERICA DO NORTE e OCEANIA\n",
+    .dono = -1,
+    .status_code = false,
+    .status_win = false,
+},
+{
+    .id = OBJ_6,
+    .texto = "Conquistar completamente a ASIA e AMERICA DO SUL\n",
+    .dono = -1,
+    .status_code = false,
+    .status_win = false,
+},
+{
+    .id = OBJ_7,
+    .texto = "Conquistar completamente a ASIA e AFRICA\n",
+    .dono = -1,
+    .status_code = false,
+    .status_win = false,
+},
+{
+    .id = OBJ_8,
+    .texto = "Conquistar completamente a AMÉRICA DO NORTE e AFRICA\n",
+    .dono = -1,
+    .status_code = false,
+    .status_win = false,
+},
+{
+    .id = OBJ_9,
+    .texto = "Tenha 20 tropas no JAPÃO e NOVA IORQUE\n",
+    .dono = -1,
+    .status_code = false,
+    .status_win = false,
+},
+{
+    .id = OBJ_10,
+    .texto = "Tenha 20 tropas na CHINA e BRASIL\n",
+    .dono = -1,
+    .status_code = false,
+    .status_win = false,
+},
+{
+    .id = OBJ_11,
+    .texto = "Tenha 20 tropas na CHINA e NOVA IORQUE\n",
+    .dono = -1,
+    .status_code = false,
+    .status_win = false,
+},
+{
+    .id = OBJ_12,
+    .texto = "Tenha 20 tropas na JAPÃO e BRASIL\n",
+    .dono = -1,
+    .status_code = false,
+    .status_win = false,
+}
+};
 
 // ================= DADOS FIXOS DO MAPA =================
 
@@ -144,7 +262,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { AS_ARGENTINA, AS_COLOMBIA, AS_CHILE, AF_NIGERIA },
-        .num_vizinhos = 4
+        .num_vizinhos = 4,
+        .eh_bonus = true
     },
     {
         .id = AS_ARGENTINA,
@@ -153,7 +272,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { AS_BRASIL, AS_CHILE },
-        .num_vizinhos = 2
+        .num_vizinhos = 2,
+        .eh_bonus = true
     },
     {
         .id = AS_CHILE,
@@ -162,7 +282,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { AS_ARGENTINA, AS_BRASIL, AS_COLOMBIA },
-        .num_vizinhos = 3
+        .num_vizinhos = 3,
+        .eh_bonus = true
     },
     {
         .id = AS_COLOMBIA,
@@ -171,7 +292,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { AS_BRASIL, AS_CHILE, AN_MEXICO },
-        .num_vizinhos = 3
+        .num_vizinhos = 3,
+        .eh_bonus = true
     },
     {
         .id = AN_ALASKA,
@@ -180,7 +302,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { AN_MACKENZIE, ASI_VLADVOSTOK },
-        .num_vizinhos = 2
+        .num_vizinhos = 2,
+        .eh_bonus = true
     },
     {
         .id = AN_VANCOUVER,
@@ -189,7 +312,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { AN_MACKENZIE, AN_OTTAWA, AN_CALIFORNIA  },
-        .num_vizinhos = 3
+        .num_vizinhos = 3,
+        .eh_bonus = true
     },
     {
         .id = AN_MACKENZIE,
@@ -198,7 +322,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { AN_ALASKA, AN_VANCOUVER, AN_OTTAWA, AN_GROELANDIA  },
-        .num_vizinhos = 4
+        .num_vizinhos = 4,
+        .eh_bonus = true
     },
     {
         .id = AN_OTTAWA,
@@ -207,7 +332,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { AN_LABRADOR, AN_MACKENZIE, AN_VANCOUVER, AN_CALIFORNIA, AN_NOVA_YORK  },
-        .num_vizinhos = 5
+        .num_vizinhos = 5,
+        .eh_bonus = true
     },
     {
         .id = AN_LABRADOR,
@@ -216,7 +342,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { AN_OTTAWA, AN_NOVA_YORK, AN_GROELANDIA  },
-        .num_vizinhos = 3
+        .num_vizinhos = 3,
+        .eh_bonus = true
     },
     {
         .id = AN_GROELANDIA,
@@ -225,7 +352,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = {AN_MACKENZIE, AN_LABRADOR, UE_ISLANDIA},
-        .num_vizinhos = 3
+        .num_vizinhos = 3,
+        .eh_bonus = true
     },
     {
         .id = AN_CALIFORNIA,
@@ -234,7 +362,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = {AN_OTTAWA, AN_VANCOUVER, AN_MEXICO, AN_NOVA_YORK},
-        .num_vizinhos = 4
+        .num_vizinhos = 4,
+        .eh_bonus = true
     },
     {
         .id = AN_NOVA_YORK,
@@ -243,7 +372,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = {AN_OTTAWA, AN_LABRADOR, AN_MEXICO, AN_CALIFORNIA},
-        .num_vizinhos = 4
+        .num_vizinhos = 4,
+        .eh_bonus = true
     },
     {
         .id = AN_MEXICO,
@@ -252,7 +382,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = {AN_NOVA_YORK, AN_CALIFORNIA, AS_COLOMBIA},
-        .num_vizinhos = 3
+        .num_vizinhos = 3,
+        .eh_bonus = true
     },
     {
         .id = AF_NIGERIA,
@@ -261,7 +392,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = {AF_EGITO, AF_CONGO, AF_SUDAO, AS_BRASIL, UE_PORTUGAL},
-        .num_vizinhos = 5
+        .num_vizinhos = 5,
+        .eh_bonus = true
     },
     {
         .id = AF_EGITO,
@@ -270,7 +402,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = {AF_NIGERIA, AF_SUDAO, ASI_ORIENTE_M, UE_POLONIA, UE_PORTUGAL},
-        .num_vizinhos = 5
+        .num_vizinhos = 5,
+        .eh_bonus = true
     },
     {
         .id = AF_SUDAO,
@@ -279,7 +412,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = {AF_EGITO, AF_CONGO, AF_AFRICA_SUL, AF_NIGERIA, AF_MADAGASCAR},
-        .num_vizinhos = 5
+        .num_vizinhos = 5,
+        .eh_bonus = true
     },
     {
         .id = AF_CONGO,
@@ -288,7 +422,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { AF_SUDAO, AF_AFRICA_SUL, AF_NIGERIA},
-        .num_vizinhos = 3
+        .num_vizinhos = 3,
+        .eh_bonus = true
     },
     {
         .id = AF_AFRICA_SUL,
@@ -297,7 +432,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { AF_SUDAO, AF_CONGO, AF_MADAGASCAR },
-        .num_vizinhos = 3
+        .num_vizinhos = 3,
+        .eh_bonus = true
     },
     {
         .id = AF_MADAGASCAR,
@@ -306,7 +442,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = {AF_AFRICA_SUL, AF_SUDAO},
-        .num_vizinhos = 2
+        .num_vizinhos = 2,
+        .eh_bonus = true
     },
     {
         .id = OC_AUSTRALIA,
@@ -315,7 +452,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { OC_SUMATRA, OC_BORNEO, OC_NOVA_GUINE},
-        .num_vizinhos = 3
+        .num_vizinhos = 3,
+        .eh_bonus = true
     },
     {
         .id = OC_BORNEO,
@@ -324,7 +462,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { OC_AUSTRALIA, OC_NOVA_GUINE, ASI_VIETNA},
-        .num_vizinhos = 3
+        .num_vizinhos = 3,
+        .eh_bonus = true
     },
     {
         .id = OC_NOVA_GUINE,
@@ -333,7 +472,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { OC_AUSTRALIA, OC_BORNEO},
-        .num_vizinhos = 2
+        .num_vizinhos = 2,
+        .eh_bonus = true
     },
     {
         .id = OC_SUMATRA,
@@ -342,7 +482,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { OC_AUSTRALIA, ASI_INDIA, ASI_VIETNA},
-        .num_vizinhos = 3
+        .num_vizinhos = 3,
+        .eh_bonus = true
     },
     {
         .id = ASI_ARAL,
@@ -351,7 +492,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { ASI_OMSK, ASI_CHINA, ASI_INDIA, ASI_ORIENTE_M, UE_MOSCOU },
-        .num_vizinhos = 5
+        .num_vizinhos = 5,
+        .eh_bonus = true
     },
     {
         .id = ASI_ORIENTE_M,
@@ -360,7 +502,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { AF_EGITO, ASI_INDIA, ASI_ARAL, UE_MOSCOU, UE_POLONIA},
-        .num_vizinhos = 5
+        .num_vizinhos = 5,
+        .eh_bonus = true
     },
     {
         .id = ASI_OMSK,
@@ -369,7 +512,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { ASI_MONGOLIA, ASI_CHINA, ASI_DUDINKA, ASI_ARAL, UE_MOSCOU},
-        .num_vizinhos = 5
+        .num_vizinhos = 5,
+        .eh_bonus = true
     },
     {
         .id = ASI_DUDINKA,
@@ -378,7 +522,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { ASI_OMSK, ASI_MONGOLIA, ASI_TCHITA, ASI_SIBERIA},
-        .num_vizinhos = 4
+        .num_vizinhos = 4,
+        .eh_bonus = true
     },
     {
         .id = ASI_SIBERIA,
@@ -387,7 +532,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { ASI_DUDINKA, ASI_VLADVOSTOK, ASI_TCHITA},
-        .num_vizinhos = 3
+        .num_vizinhos = 3,
+        .eh_bonus = true
     },
     {
         .id = ASI_TCHITA,
@@ -396,7 +542,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { ASI_VLADVOSTOK, ASI_MONGOLIA, ASI_DUDINKA, ASI_SIBERIA, ASI_CHINA},
-        .num_vizinhos = 5
+        .num_vizinhos = 5,
+        .eh_bonus = true
     },
     {
         .id = ASI_MONGOLIA,
@@ -405,7 +552,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { ASI_TCHITA, ASI_DUDINKA, ASI_OMSK, ASI_CHINA},
-        .num_vizinhos = 4
+        .num_vizinhos = 4,
+        .eh_bonus = true
     },
     {
         .id = ASI_CHINA,
@@ -414,7 +562,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { ASI_TCHITA, ASI_MONGOLIA, ASI_OMSK, ASI_ARAL, ASI_INDIA, ASI_VIETNA, ASI_JAPAO, ASI_VLADVOSTOK},
-        .num_vizinhos = 8
+        .num_vizinhos = 8,
+        .eh_bonus = true
     },
     {
         .id = ASI_INDIA,
@@ -423,7 +572,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { ASI_CHINA, ASI_ARAL, ASI_ORIENTE_M, ASI_VIETNA, OC_SUMATRA},
-        .num_vizinhos = 5
+        .num_vizinhos = 5,
+        .eh_bonus = true
     },
     {
         .id = ASI_VIETNA,
@@ -432,7 +582,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { ASI_CHINA, ASI_INDIA, ASI_JAPAO, OC_SUMATRA, OC_BORNEO},
-        .num_vizinhos = 5
+        .num_vizinhos = 5,
+        .eh_bonus = true
     },
     {
         .id = ASI_JAPAO,
@@ -441,7 +592,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { ASI_CHINA, ASI_VLADVOSTOK, ASI_VIETNA},
-        .num_vizinhos = 3
+        .num_vizinhos = 3,
+        .eh_bonus = true
     },
     {
         .id = ASI_VLADVOSTOK,
@@ -450,7 +602,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { ASI_CHINA, ASI_JAPAO, ASI_TCHITA, ASI_SIBERIA, AN_ALASKA},
-        .num_vizinhos = 5
+        .num_vizinhos = 5,
+        .eh_bonus = true
     },
     {
         .id = UE_MOSCOU,
@@ -459,7 +612,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { ASI_OMSK, ASI_ARAL, ASI_ORIENTE_M, UE_POLONIA, UE_SUECIA },
-        .num_vizinhos = 5
+        .num_vizinhos = 5,
+        .eh_bonus = true
     },
     {
         .id = UE_POLONIA,
@@ -468,7 +622,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { UE_PORTUGAL, UE_ALEMANHA, ASI_ORIENTE_M, UE_MOSCOU, AF_EGITO },
-        .num_vizinhos = 5
+        .num_vizinhos = 5,
+        .eh_bonus = true
     },
     {
         .id = UE_SUECIA,
@@ -477,7 +632,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { UE_INGLATERRA, UE_ISLANDIA, UE_ALEMANHA, UE_MOSCOU },
-        .num_vizinhos = 4
+        .num_vizinhos = 4,
+        .eh_bonus = true
     },
     {
         .id = UE_ALEMANHA,
@@ -486,7 +642,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { UE_POLONIA, UE_PORTUGAL, UE_SUECIA, UE_INGLATERRA },
-        .num_vizinhos = 4
+        .num_vizinhos = 4,
+        .eh_bonus = true
     },
     {
         .id = UE_INGLATERRA,
@@ -495,7 +652,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { UE_PORTUGAL, UE_SUECIA, UE_ALEMANHA, UE_ISLANDIA },
-        .num_vizinhos = 4
+        .num_vizinhos = 4,
+        .eh_bonus = true
     },
     {
         .id = UE_ISLANDIA,
@@ -504,7 +662,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { UE_INGLATERRA, UE_SUECIA, AN_GROELANDIA },
-        .num_vizinhos = 3
+        .num_vizinhos = 3,
+        .eh_bonus = true
     },
     {
         .id = UE_PORTUGAL,
@@ -513,7 +672,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .dono = -1,
         .tropas = 0,
         .vizinhos = { AF_EGITO, AF_NIGERIA, UE_ALEMANHA, UE_POLONIA, UE_INGLATERRA},
-        .num_vizinhos = 5
+        .num_vizinhos = 5,
+        .eh_bonus = true
     },
 };
 
