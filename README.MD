@@ -2,7 +2,8 @@
 
 Projeto de jogo baseado em turnos para terminal, escrito em C, que simula as mecânicas de dominação territorial do War. O mapa conta com 42 territórios e 6 continentes, utilizando uma estrutura de dados baseada em grafos para gerir fronteiras e bônus.
 
-O projeto ainda está em fase inicial de desenvolvimento, territorios, bonus, dados etc ja estao definidos, e no momento não está em estado jogável.
+O projeto ainda está em fase inicial de desenvolvimento, tecnicamente jogavel, mas apenas sozinho e podendo conquistar mais 2 territorios antes de
+acabar suas tropas, as outras funções de rodada de jogador serao adicionadas posteriormente.
 
 ## Objetivo
 O projeto é pensado para hospedar em um servidor doméstico, permitindo partidas entre amigos via rede local ou SSH.
