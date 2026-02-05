@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 #define MAX_VIZINHOS 8
 #define MAX_TERRITORIOS_CONTINENTE 16
@@ -97,7 +98,7 @@ typedef struct {
     int vizinhos[MAX_VIZINHOS];
     int num_vizinhos;
 
-    bool eh_bonus;
+    bool eh_bonus; //é uma carta bonus, de fazer ataque ou por tro
 } Territorio;
 
 typedef struct {
@@ -255,6 +256,7 @@ Continente continentes[TOTAL_CONTINENTES] = {
 };
 
 Territorio territorios[TOTAL_TERRITORIOS] = {
+    // --- AMERICA DO SUL ---
     {
         .id = AS_BRASIL,
         .nome = "Brasil",
@@ -295,6 +297,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .num_vizinhos = 3,
         .eh_bonus = true
     },
+
+    // --- AMERICA DO NORTE ---
     {
         .id = AN_ALASKA,
         .nome = "Alaska",
@@ -385,6 +389,8 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .num_vizinhos = 3,
         .eh_bonus = true
     },
+
+    // --- AFRICA ---
     {
         .id = AF_NIGERIA,
         .nome = "Nigeria",
@@ -445,13 +451,15 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .num_vizinhos = 2,
         .eh_bonus = true
     },
+
+    // --- OCEANIA ---
     {
-        .id = OC_AUSTRALIA,
-        .nome = "Austrália",
+        .id = OC_SUMATRA,
+        .nome = "Sumatra",
         .continente_id = CONT_OCEANIA,
         .dono = -1,
         .tropas = 0,
-        .vizinhos = { OC_SUMATRA, OC_BORNEO, OC_NOVA_GUINE},
+        .vizinhos = { OC_AUSTRALIA, ASI_INDIA, ASI_VIETNA},
         .num_vizinhos = 3,
         .eh_bonus = true
     },
@@ -476,45 +484,17 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .eh_bonus = true
     },
     {
-        .id = OC_SUMATRA,
-        .nome = "Sumatra",
+        .id = OC_AUSTRALIA,
+        .nome = "Austrália",
         .continente_id = CONT_OCEANIA,
         .dono = -1,
         .tropas = 0,
-        .vizinhos = { OC_AUSTRALIA, ASI_INDIA, ASI_VIETNA},
+        .vizinhos = { OC_SUMATRA, OC_BORNEO, OC_NOVA_GUINE},
         .num_vizinhos = 3,
         .eh_bonus = true
     },
-    {
-        .id = ASI_ARAL,
-        .nome = "Aral",
-        .continente_id = CONT_ASIA,
-        .dono = -1,
-        .tropas = 0,
-        .vizinhos = { ASI_OMSK, ASI_CHINA, ASI_INDIA, ASI_ORIENTE_M, UE_MOSCOU },
-        .num_vizinhos = 5,
-        .eh_bonus = true
-    },
-    {
-        .id = ASI_ORIENTE_M,
-        .nome = "Oriente Médio",
-        .continente_id = CONT_ASIA,
-        .dono = -1,
-        .tropas = 0,
-        .vizinhos = { AF_EGITO, ASI_INDIA, ASI_ARAL, UE_MOSCOU, UE_POLONIA},
-        .num_vizinhos = 5,
-        .eh_bonus = true
-    },
-    {
-        .id = ASI_OMSK,
-        .nome = "OmsK",
-        .continente_id = CONT_ASIA,
-        .dono = -1,
-        .tropas = 0,
-        .vizinhos = { ASI_MONGOLIA, ASI_CHINA, ASI_DUDINKA, ASI_ARAL, UE_MOSCOU},
-        .num_vizinhos = 5,
-        .eh_bonus = true
-    },
+
+    // --- ASIA ---
     {
         .id = ASI_DUDINKA,
         .nome = "Dudinka",
@@ -536,12 +516,42 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .eh_bonus = true
     },
     {
+        .id = ASI_VLADVOSTOK,
+        .nome = "Vladvostok",
+        .continente_id = CONT_ASIA,
+        .dono = -1,
+        .tropas = 0,
+        .vizinhos = { ASI_CHINA, ASI_JAPAO, ASI_TCHITA, ASI_SIBERIA, AN_ALASKA},
+        .num_vizinhos = 5,
+        .eh_bonus = true
+    },
+    {
+        .id = ASI_OMSK,
+        .nome = "OmsK",
+        .continente_id = CONT_ASIA,
+        .dono = -1,
+        .tropas = 0,
+        .vizinhos = { ASI_MONGOLIA, ASI_CHINA, ASI_DUDINKA, ASI_ARAL, UE_MOSCOU},
+        .num_vizinhos = 5,
+        .eh_bonus = true
+    },
+    {
         .id = ASI_TCHITA,
         .nome = "Tchita",
         .continente_id = CONT_ASIA,
         .dono = -1,
         .tropas = 0,
         .vizinhos = { ASI_VLADVOSTOK, ASI_MONGOLIA, ASI_DUDINKA, ASI_SIBERIA, ASI_CHINA},
+        .num_vizinhos = 5,
+        .eh_bonus = true
+    },
+    {
+        .id = ASI_ARAL,
+        .nome = "Aral",
+        .continente_id = CONT_ASIA,
+        .dono = -1,
+        .tropas = 0,
+        .vizinhos = { ASI_OMSK, ASI_CHINA, ASI_INDIA, ASI_ORIENTE_M, UE_MOSCOU },
         .num_vizinhos = 5,
         .eh_bonus = true
     },
@@ -566,6 +576,26 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .eh_bonus = true
     },
     {
+        .id = ASI_JAPAO,
+        .nome = "Japão",
+        .continente_id = CONT_ASIA,
+        .dono = -1,
+        .tropas = 0,
+        .vizinhos = { ASI_CHINA, ASI_VLADVOSTOK, ASI_VIETNA},
+        .num_vizinhos = 3,
+        .eh_bonus = true
+    },
+    {
+        .id = ASI_ORIENTE_M,
+        .nome = "Oriente Médio",
+        .continente_id = CONT_ASIA,
+        .dono = -1,
+        .tropas = 0,
+        .vizinhos = { AF_EGITO, ASI_INDIA, ASI_ARAL, UE_MOSCOU, UE_POLONIA},
+        .num_vizinhos = 5,
+        .eh_bonus = true
+    },
+    {
         .id = ASI_INDIA,
         .nome = "India",
         .continente_id = CONT_ASIA,
@@ -585,43 +615,35 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .num_vizinhos = 5,
         .eh_bonus = true
     },
+
+    // --- EUROPA ---
     {
-        .id = ASI_JAPAO,
-        .nome = "Japão",
-        .continente_id = CONT_ASIA,
+        .id = UE_ISLANDIA,
+        .nome = "Islândia",
+        .continente_id = CONT_EUROPA,
         .dono = -1,
         .tropas = 0,
-        .vizinhos = { ASI_CHINA, ASI_VLADVOSTOK, ASI_VIETNA},
+        .vizinhos = { UE_INGLATERRA, UE_SUECIA, AN_GROELANDIA },
         .num_vizinhos = 3,
         .eh_bonus = true
     },
     {
-        .id = ASI_VLADVOSTOK,
-        .nome = "Vladvostok",
-        .continente_id = CONT_ASIA,
-        .dono = -1,
-        .tropas = 0,
-        .vizinhos = { ASI_CHINA, ASI_JAPAO, ASI_TCHITA, ASI_SIBERIA, AN_ALASKA},
-        .num_vizinhos = 5,
-        .eh_bonus = true
-    },
-    {
-        .id = UE_MOSCOU,
-        .nome = "Moscou",
+        .id = UE_INGLATERRA,
+        .nome = "Inglaterra",
         .continente_id = CONT_EUROPA,
         .dono = -1,
         .tropas = 0,
-        .vizinhos = { ASI_OMSK, ASI_ARAL, ASI_ORIENTE_M, UE_POLONIA, UE_SUECIA },
-        .num_vizinhos = 5,
+        .vizinhos = { UE_PORTUGAL, UE_SUECIA, UE_ALEMANHA, UE_ISLANDIA },
+        .num_vizinhos = 4,
         .eh_bonus = true
     },
     {
-        .id = UE_POLONIA,
-        .nome = "Polônia",
+        .id = UE_PORTUGAL,
+        .nome = "Portugal",
         .continente_id = CONT_EUROPA,
         .dono = -1,
         .tropas = 0,
-        .vizinhos = { UE_PORTUGAL, UE_ALEMANHA, ASI_ORIENTE_M, UE_MOSCOU, AF_EGITO },
+        .vizinhos = { AF_EGITO, AF_NIGERIA, UE_ALEMANHA, UE_POLONIA, UE_INGLATERRA},
         .num_vizinhos = 5,
         .eh_bonus = true
     },
@@ -646,40 +668,62 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
         .eh_bonus = true
     },
     {
-        .id = UE_INGLATERRA,
-        .nome = "Inglaterra",
+        .id = UE_POLONIA,
+        .nome = "Polônia",
         .continente_id = CONT_EUROPA,
         .dono = -1,
         .tropas = 0,
-        .vizinhos = { UE_PORTUGAL, UE_SUECIA, UE_ALEMANHA, UE_ISLANDIA },
-        .num_vizinhos = 4,
-        .eh_bonus = true
-    },
-    {
-        .id = UE_ISLANDIA,
-        .nome = "Islândia",
-        .continente_id = CONT_EUROPA,
-        .dono = -1,
-        .tropas = 0,
-        .vizinhos = { UE_INGLATERRA, UE_SUECIA, AN_GROELANDIA },
-        .num_vizinhos = 3,
-        .eh_bonus = true
-    },
-    {
-        .id = UE_PORTUGAL,
-        .nome = "Portugal",
-        .continente_id = CONT_EUROPA,
-        .dono = -1,
-        .tropas = 0,
-        .vizinhos = { AF_EGITO, AF_NIGERIA, UE_ALEMANHA, UE_POLONIA, UE_INGLATERRA},
+        .vizinhos = { UE_PORTUGAL, UE_ALEMANHA, ASI_ORIENTE_M, UE_MOSCOU, AF_EGITO },
         .num_vizinhos = 5,
         .eh_bonus = true
     },
+    {
+        .id = UE_MOSCOU,
+        .nome = "Moscou",
+        .continente_id = CONT_EUROPA,
+        .dono = -1,
+        .tropas = 0,
+        .vizinhos = { ASI_OMSK, ASI_ARAL, ASI_ORIENTE_M, UE_POLONIA, UE_SUECIA },
+        .num_vizinhos = 5,
+        .eh_bonus = true
+    }
 };
 
 // ================= LOGICA =================
+int mao_cartas[MAX_JOGADORES] = {0, 0, 0, 0};
+bool ganhou_bonus_nesta_rodada = false;
 
-// Verifica se um jogador controla todo o continente
+// ================= FUNCOES =================
+
+// Sua função de dado usando ponteiros e aritmética de memória
+int dado(int x) {
+    int valores[6] = {1, 2, 3, 4, 5, 6};
+    int *p = valores;
+    int indice = rand() % 6;
+    return *(p + indice);
+}
+
+// Distribui os 5 territórios iniciais específicos entre os jogadores
+void distribui_cartas_inicio(int num_jogadores) {
+    int paises_iniciais[] = {AN_NOVA_YORK, AS_BRASIL, ASI_CHINA, OC_AUSTRALIA, UE_ALEMANHA};
+    int total_opcoes = 5;
+    bool usado[5] = {false, false, false, false, false};
+
+    for (int i = 0; i < num_jogadores; i++) {
+        int r;
+        do {
+            r = rand() % total_opcoes;
+        } while (usado[r]);
+
+        usado[r] = true;
+        int id_territorio = paises_iniciais[r];
+
+        territorios[id_territorio].dono = i; 
+        territorios[id_territorio].tropas = 2; // Começa com 2 tropas
+    }
+}
+
+// Verifica se um jogador controla todos os territórios de um continente
 int jogador_controla_continente(int jogador_id, Continente *c) {
     for (int i = 0; i < c->num_territorios; i++) {
         int tid = c->territorios[i];
@@ -690,16 +734,113 @@ int jogador_controla_continente(int jogador_id, Continente *c) {
     return 1;
 }
 
-// Calcula bonus total de continentes
+// Registra a vitória em um território e ativa a flag de bônus se aplicável
+void registrar_conquista(int vencedor_id, int territorio_id) {
+    territorios[territorio_id].dono = vencedor_id;
+    
+    // Se o território conquistado tiver o bônus ativado na struct
+    if (territorios[territorio_id].eh_bonus == true) {
+        ganhou_bonus_nesta_rodada = true;
+    }
+}
+
+// Finaliza a rodada concedendo até 3 cartas, sem passar do limite de 5
+void finalizar_rodada(int jogador_id) {
+    if (ganhou_bonus_nesta_rodada) {
+        int espaco_na_mao = 5 - mao_cartas[jogador_id];
+        int a_receber = (espaco_na_mao >= 3) ? 3 : espaco_na_mao;
+
+        if (a_receber > 0) {
+            mao_cartas[jogador_id] += a_receber;
+            printf("\n[BÔNUS] Jogador %d conquistou territorio especial e ganhou %d cartas!\n", jogador_id, a_receber);
+        }
+    }
+    // Reseta a flag para o próximo jogador
+    ganhou_bonus_nesta_rodada = false;
+}
+
+// Função complexa de ataque aéreo com regras de dados (1, 2, 3) e defesa
+void usar_bonus_aviao(int jogador_id, int id_alvo) {
+    int avioes_restantes = 5;
+    int tropas_abatidas = 0;
+    int avioes_abatidos = 0;
+
+    printf("\n--- ATAQUE AEREO INICIADO contra %s ---\n", territorios[id_alvo].nome);
+
+    while (avioes_restantes > 0) {
+        int num_aviao = 6 - avioes_restantes;
+        printf("Aviao %d decolando... ", num_aviao);
+
+        // 1. DEFESA: Defensor tenta abater o avião antes dele atacar
+        int d_defesa = dado(0);
+        if (d_defesa == 1 || d_defesa == 2) {
+            printf("[DEFESA: Abateu 1 aviao!]\n");
+            avioes_abatidos++;
+            avioes_restantes--; 
+            continue; 
+        } else if (d_defesa == 3) {
+            printf("[DEFESA: CRITICA! Abateu 2 avioes!]\n");
+            avioes_abatidos += 2;
+            avioes_restantes -= 2;
+            continue;
+        }
+
+        // 2. ATAQUE: Se o avião sobreviveu, ele causa dano
+        int d_ataque = dado(0);
+        if (d_ataque == 1) {
+            tropas_abatidas += 1;
+            printf("Sucesso: -1 tropa.\n");
+        } else if (d_ataque == 2) {
+            tropas_abatidas += 2;
+            printf("Sucesso: -2 tropas.\n");
+        } else if (d_ataque == 3) {
+            tropas_abatidas += 3;
+            printf("Sucesso: -3 tropas.\n");
+        } else {
+            printf("Errou o bombardeio.\n");
+        }
+
+        avioes_restantes--;
+    }
+
+    // Aplica o dano final
+    territorios[id_alvo].tropas -= tropas_abatidas;
+    if (territorios[id_alvo].tropas < 0) territorios[id_alvo].tropas = 0;
+
+    printf("\n--- RELATORIO DE MISSÃO ---\n");
+    printf("Tropas destruidas: %d | Avioes perdidos: %d\n", tropas_abatidas, (avioes_abatidos > 5 ? 5 : avioes_abatidos));
+}
+
+// Gerenciador do uso das cartas de bônus
+void usar_carta_bonus(int jogador_id, int territorio_id, int tipo_uso) {
+    if (mao_cartas[jogador_id] <= 0) {
+        printf("Você não tem cartas bônus!\n");
+        return;
+    }
+
+    if (tipo_uso == 1) { // MODO REFORÇO
+        if (territorios[territorio_id].dono == jogador_id) {
+            territorios[territorio_id].tropas += 5;
+            mao_cartas[jogador_id]--;
+            printf("Reforço de +5 tropas aplicado em %s!\n", territorios[territorio_id].nome);
+        } else {
+            printf("Erro: Você só pode reforçar seus próprios territórios.\n");
+        }
+    } 
+    else if (tipo_uso == 2) { // MODO ATAQUE (AVIÃO)
+        usar_bonus_aviao(jogador_id, territorio_id);
+        mao_cartas[jogador_id]--; // Gasta a carta após o ataque
+    }
+}
+
+// Calcula o bônus de tropas ganho por continentes inteiros
 int calcular_bonus_continentes(int jogador_id) {
     int bonus = 0;
-
     for (int i = 0; i < TOTAL_CONTINENTES; i++) {
         if (jogador_controla_continente(jogador_id, &continentes[i])) {
             bonus += continentes[i].bonus_completo;
         }
     }
-
     return bonus;
 }
 
