@@ -310,7 +310,7 @@ Territorio territorios[TOTAL_TERRITORIOS] = {
 
 // ================= FUNÇÕES DO JOGO =================
 
-// Rola um dado de 6 faces usando ponteiros
+// Rola d6
 int dado() {
     int valores[6] = {1, 2, 3, 4, 5, 6};
     int *p = valores;
@@ -318,7 +318,7 @@ int dado() {
     return *(p + indice);
 }
 
-// Busca o ID de um território pelo nome digitado
+// Busca o ID de um território
 int buscar_territorio_por_nome(char *nome) {
     for (int i = 0; i < TOTAL_TERRITORIOS; i++) {
         if (strcasecmp(territorios[i].nome, nome) == 0) {
@@ -328,7 +328,7 @@ int buscar_territorio_por_nome(char *nome) {
     return -1;
 }
 
-// Distribui territórios: 1 fixo (dos 5 iniciais) + 1 aleatório (proibindo os outros 4 principais)
+// Distribui territórios: 1 fixo (dos 5 iniciais) + 1 aleatório
 void distribui_cartas_inicio(int num_jogadores) {
     int paises_iniciais[] = {AN_NOVA_YORK, AS_BRASIL, ASI_CHINA, OC_AUSTRALIA, UE_ALEMANHA};
     bool base_usada[5] = {false, false, false, false, false};
@@ -341,7 +341,7 @@ void distribui_cartas_inicio(int num_jogadores) {
         base_usada[r] = true;
         int id_base = paises_iniciais[r];
         territorios[id_base].dono = i; 
-        territorios[id_base].tropas = 2; // Começa com 2
+        territorios[id_base].tropas = 2;
     }
 
     for (int i = 0; i < num_jogadores; i++) {
@@ -356,7 +356,7 @@ void distribui_cartas_inicio(int num_jogadores) {
         } while (territorios[id_global].dono != -1 || eh_principal); 
 
         territorios[id_global].dono = i;
-        territorios[id_global].tropas = 2; // Começa com 2
+        territorios[id_global].tropas = 2;
     }
 }
 
@@ -593,9 +593,9 @@ int main() {
     int jogador_atual = 0;
     int num_jogadores = 4;
     char alvo_nome[32];
-    int d1, d2; // Variáveis para os dados da luta_tropas
+    int d1, d2; // Dados da luta_tropas
 
-    // Inicialização do estado dos territórios
+    // Estado dos territórios
     for(int i=0; i<TOTAL_TERRITORIOS; i++) {
         territorios[i].dono = -1;
         territorios[i].tropas = 0;
@@ -682,7 +682,7 @@ int main() {
             }
 
             if (cont == 0) {
-                printf(">> Erro: Sem vizinhos com tropas suficientes (min 2) para atacar.\n");
+                printf(">> Erro: Sem vizinhos com tropas suficientes.\n");
                 continue;
             }
 
