@@ -505,75 +505,220 @@ int calcular_tropas_recebidas(int jogador_id) {
     return (bonus_base < 3 ? 3 : bonus_base) + bonus_total; // Mínimo de 3 tropas como no jogo real
 }
 
+int luta_tropas(int jogador_atacado, int jogador_atual, int *joga_1, int *joga_2){
+    int x = 0;
+    int y = 0;
+    int empate = 67;
+    for(int i = 0; i < 2; i++){
+       if(i == 0){
+       x = dado();        
+       *joga_1 = x;
+    }
+       else{
+       y = dado();        
+       *joga_2 = y;
+       }
+    }
+
+    if(x > y){
+        return jogador_atacado;
+    }else if(x < y){
+        return jogador_atual;
+    }else{
+        return empate;
+    }
+}
+
+void ocupar_mapa_manual(int num_jogadores) {
+    int jogador_da_vez = 0;
+    int territorios_ocupados = 0;
+
+    // Conta quantos já foram ocupados na distribuição inicial
+    for (int i = 0; i < TOTAL_TERRITORIOS; i++) {
+        if (territorios[i].dono != -1) territorios_ocupados++;
+    }
+
+    while (territorios_ocupados < TOTAL_TERRITORIOS) {
+        printf("\n=== STATUS DO MAPA (%d/%d) ===\n", territorios_ocupados, TOTAL_TERRITORIOS);
+        
+        for (int i = 0; i < TOTAL_TERRITORIOS; i++) {
+            if (territorios[i].dono != -1) {
+                printf("[X] %-15s (Dono: %d) | ", territorios[i].nome, territorios[i].dono);
+            } else {
+                printf("[ ] %-15s (LIVRE)    | ", territorios[i].nome);
+            }
+            if ((i + 1) % 3 == 0) printf("\n");
+        }
+
+        char entrada[32];
+        printf("\n\nJOGADOR %d, escolha um territorio (ou digite 'debug' para auto-completar): ", jogador_da_vez);
+        scanf(" %[^\n]s", entrada);
+
+        // --- TRECHO DE DEBUG ---
+        if (strcasecmp(entrada, "debug") == 0) {
+            printf("\n[DEBUG] Distribuindo territorios restantes automaticamente...\n");
+            for (int i = 0; i < TOTAL_TERRITORIOS; i++) {
+                if (territorios[i].dono == -1) {
+                    territorios[i].dono = jogador_da_vez;
+                    territorios[i].tropas = 1;
+                    territorios_ocupados++;
+                    jogador_da_vez = (jogador_da_vez + 1) % num_jogadores;
+                }
+            }
+            break; // Sai do while de ocupação
+        }
+        // -----------------------
+
+        int id = buscar_territorio_por_nome(entrada);
+
+        if (id != -1 && territorios[id].dono == -1) {
+            territorios[id].dono = jogador_da_vez;
+            territorios[id].tropas = 1;
+            territorios_ocupados++;
+            jogador_da_vez = (jogador_da_vez + 1) % num_jogadores;
+            printf("\n>> Sucesso!\n");
+        } else {
+            printf("\n>> ERRO: Nome invalido ou ja ocupado! Tente novamente.\n");
+        }
+    }
+    printf("\n=== MAPA PRONTO PARA A GUERRA ===\n");
+}
+
 // ================= MAIN =================
+int *joga_1;
+int *joga_2;
 
 int main() {
     srand(time(NULL));
-    char alvo_nome[32];
     int jogador_atual = 0;
-    int num_jogadores = 3;
+    int num_jogadores = 4;
+    char alvo_nome[32];
+    int d1, d2; // Variáveis para os dados da luta_tropas
 
-    for(int i=0; i<TOTAL_TERRITORIOS; i++) territorios[i].dono = -1;
+    // Inicialização do estado dos territórios
+    for(int i=0; i<TOTAL_TERRITORIOS; i++) {
+        territorios[i].dono = -1;
+        territorios[i].tropas = 0;
+    }
+    
     distribui_cartas_inicio(num_jogadores);
-
-    printf("\n=== GUERRA INICIADA (Digite 'FIM' para encerrar) ===\n");
-
+    ocupar_mapa_manual(num_jogadores);
     while(true) {
+        printf("\n\n========================================");
+        printf("\n   TURNO DO JOGADOR %d", jogador_atual);
+        printf("\n========================================");
         mostrar_meus_territorios(jogador_atual);
-        printf("\nTerritorio a conquistar (ou 'FIM'): ");
-        scanf(" %[^\n]s", alvo_nome);
-
-        if (strcasecmp(alvo_nome, "FIM") == 0) break;
-
-        int id_alvo = buscar_territorio_por_nome(alvo_nome);
-
-        if (id_alvo == -1) {
-            printf(">> Erro: Nome incorreto.\n");
-            continue;
+        // 1. FASE DE REFORÇO
+        int novas_tropas = calcular_tropas_recebidas(jogador_atual);
+        printf("\n[SISTEMA] Voce recebeu %d tropas de reforco.", novas_tropas);
+        
+        while(novas_tropas > 0) {
+            char destino_reforco[32];
+            printf("\nOnde colocar reforcos? (%d restantes): ", novas_tropas);
+            scanf(" %[^\n]s", destino_reforco);
+            int id_ref = buscar_territorio_por_nome(destino_reforco);
+            
+            if(id_ref != -1 && territorios[id_ref].dono == jogador_atual) {
+                int qtd;
+                printf("Quantas tropas em %s? ", territorios[id_ref].nome);
+                scanf("%d", &qtd);
+                if(qtd > 0 && qtd <= novas_tropas) {
+                    territorios[id_ref].tropas += qtd;
+                    novas_tropas -= qtd;
+                } else {
+                    printf("Quantidade invalida!");
+                }
+            } else {
+                printf("Territorio invalido ou nao e seu!");
+            }
         }
-        if (territorios[id_alvo].dono == jogador_atual) {
-            printf(">> Erro: Este territorio ja e seu.\n");
-            continue;
+
+        // 2. FASE DE CARTAS
+        if(mao_cartas[jogador_atual] > 0) {
+            char usar;
+            printf("\nVoce tem %d cartas. Deseja usar uma? (s/n): ", mao_cartas[jogador_atual]);
+            scanf(" %c", &usar);
+            if(usar == 's') {
+                char t_nome[32];
+                int t_tipo;
+                printf("Nome do territorio para o bonus: ");
+                scanf(" %[^\n]s", t_nome);
+                int id_t = buscar_territorio_por_nome(t_nome);
+                printf("Tipo (1: Reforco +5, 2: Aviao): ");
+                scanf("%d", &t_tipo);
+                if(id_t != -1) usar_carta_bonus(jogador_atual, id_t, t_tipo);
+            }
         }
 
-        // 1. Achar vizinhos do jogador que podem atacar o alvo
-        int vizinhos_aptos[MAX_VIZINHOS];
-        int cont = 0;
+        // 3. FASE DE ATAQUE
+        while(true) {
+            mostrar_meus_territorios(jogador_atual);
+            printf("\nComando: [NOME DO PAIS] para atacar ou 'FIM' para passar: ");
+            scanf(" %[^\n]s", alvo_nome);
 
-        for (int i = 0; i < TOTAL_TERRITORIOS; i++) {
-            if (territorios[i].dono == jogador_atual && sao_vizinhos(i, id_alvo)) {
-                if (territorios[i].tropas > 1) {
-                    vizinhos_aptos[cont++] = i;
+            if (strcasecmp(alvo_nome, "FIM") == 0) {
+                finalizar_rodada(jogador_atual); 
+                jogador_atual = (jogador_atual + 1) % num_jogadores; // Troca o turno
+                break; 
+            }
+
+            int id_alvo = buscar_territorio_por_nome(alvo_nome);
+            if (id_alvo == -1 || territorios[id_alvo].dono == jogador_atual) {
+                printf("Alvo invalido ou ja e seu!\n");
+                continue;
+            }
+
+            // --- LÓGICA PARA IDENTIFICAR ID_ORIGEM ---
+            int id_origem = -1;
+            int vizinhos_aptos[MAX_VIZINHOS];
+            int cont = 0;
+
+            for (int i = 0; i < TOTAL_TERRITORIOS; i++) {
+                if (territorios[i].dono == jogador_atual && sao_vizinhos(i, id_alvo)) {
+                    if (territorios[i].tropas > 1) {
+                        vizinhos_aptos[cont++] = i;
+                    }
                 }
             }
-        }
 
-        if (cont == 0) {
-            printf(">> Erro: Voce nao tem paises vizinhos com tropas para atacar %s.\n", alvo_nome);
-            continue;
-        }
-
-        int id_origem = -1;
-        if (cont == 1) {
-            id_origem = vizinhos_aptos[0];
-        } else {
-            printf("Escolha o territorio de origem do ataque:\n");
-            for (int i = 0; i < cont; i++) {
-                printf("[%d] %s (%d tropas)\n", i, territorios[vizinhos_aptos[i]].nome, territorios[vizinhos_aptos[i]].tropas);
+            if (cont == 0) {
+                printf(">> Erro: Sem vizinhos com tropas suficientes (min 2) para atacar.\n");
+                continue;
             }
-            int esc;
-            printf("Opcao: ");
-            scanf("%d", &esc);
-            if (esc >= 0 && esc < cont) id_origem = vizinhos_aptos[esc];
-            else { printf("Cancelado.\n"); continue; }
+
+            if (cont == 1) {
+                id_origem = vizinhos_aptos[0];
+            } else {
+                printf("Escolha a origem do ataque:\n");
+                for (int i = 0; i < cont; i++) {
+                    printf("[%d] %s (%d tropas)\n", vizinhos_aptos[i], territorios[vizinhos_aptos[i]].nome, territorios[vizinhos_aptos[i]].tropas);
+                }
+                printf("Digite o ID da origem: ");
+                scanf("%d", &id_origem);
+            }
+
+            // --- EXECUÇÃO DO COMBATE ---
+            // Usando sua função luta_tropas
+            int resultado = luta_tropas(territorios[id_alvo].dono, jogador_atual, &d1, &d2);
+            
+            printf("\n--- RESULTADO DOS DADOS ---");
+            printf("\nAtacante (Jogador %d): [%d]", jogador_atual, d2);
+            printf("\nDefensor (Jogador %d): [%d]", territorios[id_alvo].dono, d1);
+
+            if(resultado == jogador_atual) {
+                printf("\n>> Vitoria no dado! Defesa perde 1 tropa.");
+                territorios[id_alvo].tropas--;
+                if(territorios[id_alvo].tropas <= 0) {
+                    conquistar_territorio(jogador_atual, id_origem, id_alvo);
+                }
+            } else if(resultado == territorios[id_alvo].dono) {
+                printf("\n>> Derrota no dado! Ataque perde 1 tropa.");
+                territorios[id_origem].tropas--;
+            } else {
+                printf("\n>> Empate! Defesa ganha (Ataque perde 1 tropa).");
+                territorios[id_origem].tropas--;
+            }
         }
-
-        // 2. Conquistar
-        conquistar_territorio(jogador_atual, id_origem, id_alvo);
-        finalizar_rodada(jogador_atual);
-        
-        printf("\n--- Turno Processado ---\n");
     }
-
     return 0;
 }
