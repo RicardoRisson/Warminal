@@ -3,7 +3,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
+#include <arpa/inet.h>
 
+#define PORT 12345
+#define MAX_JOGADORES 4
+#define BUFFER_SIZE 1024
+int cliente_sockets[MAX_JOGADORES];
 #ifdef _WIN32
     #define strcasecmp _stricmp
 #endif
@@ -12,7 +18,6 @@
 
 #define MAX_VIZINHOS 8
 #define MAX_TERRITORIOS_CONTINENTE 16
-#define MAX_JOGADORES 4
 
 #define CONT_AMERICA_SUL 0
 #define CONT_AMERICA_NORTE 1
@@ -86,6 +91,12 @@
 #define OBJ_12 11
 
 #define TOTAL_OBJETIVOS 12
+
+void enviar_msg(int jogador_id, const char *msg);
+void broadcast(const char *msg);
+void receber_msg(int jogador_id, char *buffer);
+void mostrar_meus_territorios_rede(int jogador_id);
+void conquistar_territorio_rede(int vencedor_id, int id_origem, int id_destino);
 
 // ================= STRUCTS (FORMATADAS) =================
 
@@ -371,55 +382,11 @@ int jogador_controla_continente(int jogador_id, Continente *c) {
     return 1;
 }
 
-// Lista os territórios do jogador e seus vizinhos
-void mostrar_meus_territorios(int jogador_id) {
-    printf("\n=== SEUS TERRITORIOS E FRONTEIRAS (Jogador %d) ===\n", jogador_id);
-    bool tem_territorio = false;
-    for (int i = 0; i < TOTAL_TERRITORIOS; i++) {
-        if (territorios[i].dono == jogador_id) {
-            tem_territorio = true;
-            printf("[%d] %s (Tropas: %d) | Vizinhos: ", i, territorios[i].nome, territorios[i].tropas);
-            for (int j = 0; j < territorios[i].num_vizinhos; j++) {
-                int v_id = territorios[i].vizinhos[j];
-                printf("%s (Dono: %d)%s", territorios[v_id].nome, territorios[v_id].dono, (j < territorios[i].num_vizinhos - 1) ? ", " : "");
-            }
-            printf("\n");
-        }
-    }
-    if (!tem_territorio) printf("Voce nao possui territorios no momento.\n");
-}
-
 bool sao_vizinhos(int id_origem, int id_destino) {
     for (int i = 0; i < territorios[id_origem].num_vizinhos; i++) {
         if (territorios[id_origem].vizinhos[i] == id_destino) return true;
     }
     return false;
-}
-
-// Realiza a conquista e remaneja tropas
-void conquistar_territorio(int vencedor_id, int id_origem, int id_destino) {
-    printf("\n--- VITORIA! %s foi conquistado a partir de %s! ---\n", 
-            territorios[id_destino].nome, territorios[id_origem].nome);
-    
-    int tropas_disponiveis = territorios[id_origem].tropas - 1;
-    int qtd_enviar;
-
-    if (tropas_disponiveis <= 1) {
-        qtd_enviar = 1;
-        printf("Movendo automaticamente 1 tropa para ocupar.\n");
-    } else {
-        do {
-            printf("Quantas tropas enviar de %s para %s? (Disponivel: %d): ", 
-                    territorios[id_origem].nome, territorios[id_destino].nome, tropas_disponiveis);
-            scanf("%d", &qtd_enviar);
-        } while (qtd_enviar < 1 || qtd_enviar > tropas_disponiveis);
-    }
-
-    territorios[id_destino].dono = vencedor_id;
-    territorios[id_destino].tropas = qtd_enviar;
-    territorios[id_origem].tropas -= qtd_enviar;
-
-    if (territorios[id_destino].eh_bonus) ganhou_bonus_nesta_rodada = true;
 }
 
 // Finaliza a rodada com sorteio de 1 a 3 cartas
@@ -483,6 +450,36 @@ void usar_carta_bonus(int jogador_id, int territorio_id, int tipo_uso) {
     }
 }
 
+// Realiza a conquista e remaneja tropas
+void conquistar_territorio_rede(int vencedor_id, int id_origem, int id_destino) {
+    char out[BUFFER_SIZE], in[BUFFER_SIZE];
+    
+    sprintf(out, "\n--- VITORIA! %s conquistado a partir de %s! ---\n", 
+            territorios[id_destino].nome, territorios[id_origem].nome);
+    broadcast(out);
+    
+    int tropas_disponiveis = territorios[id_origem].tropas - 1;
+    int qtd_enviar;
+
+    if (tropas_disponiveis <= 1) {
+        qtd_enviar = 1;
+        enviar_msg(vencedor_id, "Movendo automaticamente 1 tropa para ocupar.\n");
+    } else {
+        sprintf(out, "Quantas tropas mover de %s (Max: %d)? ", territorios[id_origem].nome, tropas_disponiveis);
+        enviar_msg(vencedor_id, out);
+        receber_msg(vencedor_id, in);
+        qtd_enviar = atoi(in); // Converte string recebida para int
+        if (qtd_enviar < 1 || qtd_enviar > tropas_disponiveis) qtd_enviar = 1;
+    }
+
+    territorios[id_destino].dono = vencedor_id;
+    territorios[id_destino].tropas = qtd_enviar;
+    territorios[id_origem].tropas -= qtd_enviar;
+
+    if (territorios[id_destino].eh_bonus) ganhou_bonus_nesta_rodada = true;
+}
+
+
 // Cálculo de tropas por turno
 int calcular_tropas_recebidas(int jogador_id) {
     int total_territorios_jogador = 0;
@@ -505,28 +502,13 @@ int calcular_tropas_recebidas(int jogador_id) {
     return (bonus_base < 3 ? 3 : bonus_base) + bonus_total; // Mínimo de 3 tropas como no jogo real
 }
 
-int luta_tropas(int jogador_atacado, int jogador_atual, int *joga_1, int *joga_2){
-    int x = 0;
-    int y = 0;
-    int empate = 67;
-    for(int i = 0; i < 2; i++){
-       if(i == 0){
-       x = dado();        
-       *joga_1 = x;
-    }
-       else{
-       y = dado();        
-       *joga_2 = y;
-       }
-    }
-
-    if(x > y){
-        return jogador_atacado;
-    }else if(x < y){
-        return jogador_atual;
-    }else{
-        return empate;
-    }
+int luta_tropas_rede(int jogador_atacado, int jogador_atual, int *d1, int *d2){
+    *d1 = dado(); // Dado do Defensor
+    *d2 = dado(); // Dado do Atacante
+    
+    if(*d2 > *d1) return jogador_atual;
+    if(*d2 < *d1) return jogador_atacado;
+    return 67; // Empate (Defesa ganha no War)
 }
 
 void ocupar_mapa_manual(int num_jogadores) {
@@ -567,6 +549,8 @@ void ocupar_mapa_manual(int num_jogadores) {
             }
             break; // Sai do while de ocupação
         }
+
+        
         // -----------------------
 
         int id = buscar_territorio_por_nome(entrada);
@@ -583,6 +567,76 @@ void ocupar_mapa_manual(int num_jogadores) {
     }
     printf("\n=== MAPA PRONTO PARA A GUERRA ===\n");
 }
+void enviar_msg(int jogador_id, const char *msg) {
+    send(cliente_sockets[jogador_id], msg, strlen(msg), 0);
+}
+
+// Lista os territórios do jogador e seus vizinhos
+void mostrar_meus_territorios_rede(int jogador_id) {
+    char out[BUFFER_SIZE];
+    enviar_msg(jogador_id, "\n=== SEUS TERRITORIOS ===\n");
+    for (int i = 0; i < TOTAL_TERRITORIOS; i++) {
+        if (territorios[i].dono == jogador_id) {
+            sprintf(out, "[%s] Tropas: %d\n", territorios[i].nome, territorios[i].tropas);
+            enviar_msg(jogador_id, out);
+        }
+    }
+}
+
+void broadcast(const char *msg) {
+    for(int i = 0; i < MAX_JOGADORES; i++) {
+        if(cliente_sockets[i] > 0) send(cliente_sockets[i], msg, strlen(msg), 0);
+    }
+}
+
+void receber_msg(int jogador_id, char *buffer) {
+    memset(buffer, 0, BUFFER_SIZE);
+    int n = recv(cliente_sockets[jogador_id], buffer, BUFFER_SIZE, 0);
+    if (n <= 0) { printf("Jogador %d desconectou.\n", jogador_id); exit(1); }
+    buffer[strcspn(buffer, "\n")] = 0;
+    buffer[strcspn(buffer, "\r")] = 0;
+}
+
+bool verificar_vitoria(int jogador_id) {
+    int meu_obj = -1;
+    // Encontra qual objetivo pertence a este jogador
+    for(int i=0; i<TOTAL_OBJETIVOS; i++) {
+        if(Objetivos[i].dono == jogador_id) { meu_obj = i; break; }
+    }
+
+    switch(meu_obj) {
+        case OBJ_5: // América do Norte e Oceania
+            return (jogador_controla_continente(jogador_id, &continentes[CONT_AMERICA_NORTE]) && 
+                    jogador_controla_continente(jogador_id, &continentes[CONT_OCEANIA]));
+        case OBJ_6: // Ásia e América do Sul
+            return (jogador_controla_continente(jogador_id, &continentes[CONT_ASIA]) && 
+                    jogador_controla_continente(jogador_id, &continentes[CONT_AMERICA_SUL]));
+        case OBJ_7: // Ásia e África
+            return (jogador_controla_continente(jogador_id, &continentes[CONT_ASIA]) && 
+                    jogador_controla_continente(jogador_id, &continentes[CONT_AFRICA]));
+        case OBJ_8: // América do Norte e África
+            return (jogador_controla_continente(jogador_id, &continentes[CONT_AMERICA_NORTE]) && 
+                    jogador_controla_continente(jogador_id, &continentes[CONT_AFRICA]));
+        case OBJ_9: // 20 tropas no Japão e NY
+            return (territorios[ASI_JAPAO].dono == jogador_id && territorios[ASI_JAPAO].tropas >= 20 &&
+                    territorios[AN_NOVA_YORK].dono == jogador_id && territorios[AN_NOVA_YORK].tropas >= 20);
+        case OBJ_10: // 20 tropas China e Brasil
+            return (territorios[ASI_CHINA].dono == jogador_id && territorios[ASI_CHINA].tropas >= 20 &&
+                    territorios[AS_BRASIL].dono == jogador_id && territorios[AS_BRASIL].tropas >= 20);
+        case OBJ_11: // 20 tropas China e NY
+            return (territorios[ASI_CHINA].dono == jogador_id && territorios[ASI_CHINA].tropas >= 20 &&
+                    territorios[AN_NOVA_YORK].dono == jogador_id && territorios[AN_NOVA_YORK].tropas >= 20);
+        case OBJ_12: // 20 tropas Japão e Brasil
+            return (territorios[ASI_JAPAO].dono == jogador_id && territorios[ASI_JAPAO].tropas >= 20 &&
+                    territorios[AS_BRASIL].dono == jogador_id && territorios[AS_BRASIL].tropas >= 20);
+        default:
+            // Para os objetivos de "Destruir exército", como não temos cores fixas, 
+            // uma regra comum de fallback é conquistar 24 territórios.
+            int count = 0;
+            for(int i=0; i<TOTAL_TERRITORIOS; i++) if(territorios[i].dono == jogador_id) count++;
+            return (count >= 24);
+    }
+}
 
 // ================= MAIN =================
 int *joga_1;
@@ -590,135 +644,171 @@ int *joga_2;
 
 int main() {
     srand(time(NULL));
-    int jogador_atual = 0;
-    int num_jogadores = 4;
-    char alvo_nome[32];
-    int d1, d2; // Dados da luta_tropas
+    int server_fd;
+    struct sockaddr_in address;
+    int opt = 1, addrlen = sizeof(address);
+    char buffer_rede[BUFFER_SIZE];
+    char msg_temp[BUFFER_SIZE];
 
-    // Estado dos territórios
-    for(int i=0; i<TOTAL_TERRITORIOS; i++) {
-        territorios[i].dono = -1;
-        territorios[i].tropas = 0;
+    // Setup do Socket
+    server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(PORT);
+
+    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
+        perror("Erro no bind"); exit(EXIT_FAILURE);
     }
-    
-    distribui_cartas_inicio(num_jogadores);
-    ocupar_mapa_manual(num_jogadores);
-    while(true) {
-        printf("\n\n========================================");
-        printf("\n   TURNO DO JOGADOR %d", jogador_atual);
-        printf("\n========================================");
-        mostrar_meus_territorios(jogador_atual);
-        // 1. FASE DE REFORÇO
-        int novas_tropas = calcular_tropas_recebidas(jogador_atual);
-        printf("\n[SISTEMA] Voce recebeu %d tropas de reforco.", novas_tropas);
+    listen(server_fd, MAX_JOGADORES);
+
+    printf("[SERVIDOR] Aguardando %d jogadores...\n", MAX_JOGADORES);
+    for (int i = 0; i < MAX_JOGADORES; i++) {
+        cliente_sockets[i] = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen);
+        enviar_msg(i, "Conectado! Aguardando inicio do jogo...\n");
+        printf("Jogador %d conectado.\n", i);
+    }
+
+    // Inicialização do Estado
+    // --- SORTEIO DE OBJETIVOS ---
+    distribui_cartas_inicio(MAX_JOGADORES);
+    bool obj_sorteado[TOTAL_OBJETIVOS] = {false};
+    for (int i = 0; i < MAX_JOGADORES; i++) {
+        int r;
+        do { r = rand() % TOTAL_OBJETIVOS; } while (obj_sorteado[r]);
+        obj_sorteado[r] = true;
+        Objetivos[r].dono = i;
         
-        while(novas_tropas > 0) {
-            char destino_reforco[32];
-            printf("\nOnde colocar reforcos? (%d restantes): ", novas_tropas);
-            scanf(" %[^\n]s", destino_reforco);
-            int id_ref = buscar_territorio_por_nome(destino_reforco);
-            
-            if(id_ref != -1 && territorios[id_ref].dono == jogador_atual) {
-                int qtd;
-                printf("Quantas tropas em %s? ", territorios[id_ref].nome);
-                scanf("%d", &qtd);
-                if(qtd > 0 && qtd <= novas_tropas) {
-                    territorios[id_ref].tropas += qtd;
-                    novas_tropas -= qtd;
-                } else {
-                    printf("Quantidade invalida!");
-                }
-            } else {
-                printf("Territorio invalido ou nao e seu!");
-            }
-        }
-
-        // 2. FASE DE CARTAS
-        if(mao_cartas[jogador_atual] > 0) {
-            char usar;
-            printf("\nVoce tem %d cartas. Deseja usar uma? (s/n): ", mao_cartas[jogador_atual]);
-            scanf(" %c", &usar);
-            if(usar == 's') {
-                char t_nome[32];
-                int t_tipo;
-                printf("Nome do territorio para o bonus: ");
-                scanf(" %[^\n]s", t_nome);
-                int id_t = buscar_territorio_por_nome(t_nome);
-                printf("Tipo (1: Reforco +5, 2: Aviao): ");
-                scanf("%d", &t_tipo);
-                if(id_t != -1) usar_carta_bonus(jogador_atual, id_t, t_tipo);
-            }
-        }
-
-        // 3. FASE DE ATAQUE
-        while(true) {
-            mostrar_meus_territorios(jogador_atual);
-            printf("\nComando: [NOME DO PAIS] para atacar ou 'FIM' para passar: ");
-            scanf(" %[^\n]s", alvo_nome);
-
-            if (strcasecmp(alvo_nome, "FIM") == 0) {
-                finalizar_rodada(jogador_atual); 
-                jogador_atual = (jogador_atual + 1) % num_jogadores; // Troca o turno
-                break; 
-            }
-
-            int id_alvo = buscar_territorio_por_nome(alvo_nome);
-            if (id_alvo == -1 || territorios[id_alvo].dono == jogador_atual) {
-                printf("Alvo invalido ou ja e seu!\n");
-                continue;
-            }
-
-            // --- LÓGICA PARA IDENTIFICAR ID_ORIGEM ---
-            int id_origem = -1;
-            int vizinhos_aptos[MAX_VIZINHOS];
-            int cont = 0;
-
-            for (int i = 0; i < TOTAL_TERRITORIOS; i++) {
-                if (territorios[i].dono == jogador_atual && sao_vizinhos(i, id_alvo)) {
-                    if (territorios[i].tropas > 1) {
-                        vizinhos_aptos[cont++] = i;
-                    }
-                }
-            }
-
-            if (cont == 0) {
-                printf(">> Erro: Sem vizinhos com tropas suficientes.\n");
-                continue;
-            }
-
-            if (cont == 1) {
-                id_origem = vizinhos_aptos[0];
-            } else {
-                printf("Escolha a origem do ataque:\n");
-                for (int i = 0; i < cont; i++) {
-                    printf("[%d] %s (%d tropas)\n", vizinhos_aptos[i], territorios[vizinhos_aptos[i]].nome, territorios[vizinhos_aptos[i]].tropas);
-                }
-                printf("Digite o ID da origem: ");
-                scanf("%d", &id_origem);
-            }
-
-            // --- EXECUÇÃO DO COMBATE ---
-            // Usando sua função luta_tropas
-            int resultado = luta_tropas(territorios[id_alvo].dono, jogador_atual, &d1, &d2);
-            
-            printf("\n--- RESULTADO DOS DADOS ---");
-            printf("\nAtacante (Jogador %d): [%d]", jogador_atual, d2);
-            printf("\nDefensor (Jogador %d): [%d]", territorios[id_alvo].dono, d1);
-
-            if(resultado == jogador_atual) {
-                printf("\n>> Vitoria no dado! Defesa perde 1 tropa.");
-                territorios[id_alvo].tropas--;
-                if(territorios[id_alvo].tropas <= 0) {
-                    conquistar_territorio(jogador_atual, id_origem, id_alvo);
-                }
-            } else if(resultado == territorios[id_alvo].dono) {
-                printf("\n>> Derrota no dado! Ataque perde 1 tropa.");
-                territorios[id_origem].tropas--;
-            } else {
-                printf("\n>> Empate! Defesa ganha (Ataque perde 1 tropa).");
-                territorios[id_origem].tropas--;
-            }
-        }
+        sprintf(msg_temp, "\n[MISSÃO SECRETA] Seu objetivo é: %s\n", Objetivos[r].texto);
+        enviar_msg(i, msg_temp);
     }
+
+    int jogador_atual = 0;
+    int d_def, d_atk;
+
+    broadcast("\n--- O JOGO COMEÇOU! ---\n");
+
+while(true) {
+        sprintf(msg_temp, "\n>>> VEZ DO JOGADOR %d <<<\n", jogador_atual);
+        broadcast(msg_temp);
+        
+        // --- 1. FASE DE REFORÇO ---
+        int tropas_para_receber = calcular_tropas_recebidas(jogador_atual);
+        sprintf(msg_temp, "[SISTEMA] Voce recebeu %d tropas de reforco!\n", tropas_para_receber);
+        enviar_msg(jogador_atual, msg_temp);
+
+        while (tropas_para_receber > 0) {
+            mostrar_meus_territorios_rede(jogador_atual);
+            sprintf(msg_temp, "Tropas restantes para posicionar: %d\nEscolha o territorio: ", tropas_para_receber);
+            enviar_msg(jogador_atual, msg_temp);
+            
+            receber_msg(jogador_atual, buffer_rede);
+            int id_alvo = buscar_territorio_por_nome(buffer_rede);
+
+            if (id_alvo != -1 && territorios[id_alvo].dono == jogador_atual) {
+                enviar_msg(jogador_atual, "Quantas tropas colocar aqui? ");
+                receber_msg(jogador_atual, buffer_rede);
+                int qtd = atoi(buffer_rede);
+
+                if (qtd > 0 && qtd <= tropas_para_receber) {
+                    territorios[id_alvo].tropas += qtd;
+                    tropas_para_receber -= qtd;
+                    enviar_msg(jogador_atual, "Tropas posicionadas!\n");
+                } else {
+                    enviar_msg(jogador_atual, "Quantidade invalida!\n");
+                }
+            } else {
+                enviar_msg(jogador_atual, "Territorio invalido ou nao eh seu!\n");
+            }
+        }
+
+        // --- 2. FASE DE ATAQUE ---
+        bool atacando = true;
+        while (atacando) {
+            enviar_msg(jogador_atual, "\n--- ATAQUE --- Escolha ORIGEM (ou 'FIM'): ");
+            receber_msg(jogador_atual, buffer_rede);
+
+            if (strcasecmp(buffer_rede, "FIM") == 0) {
+                atacando = false;
+                break;
+            }
+
+            int id_origem = buscar_territorio_por_nome(buffer_rede);
+            if (id_origem != -1 && territorios[id_origem].dono == jogador_atual && territorios[id_origem].tropas > 1) {
+                enviar_msg(jogador_atual, "Escolha o ALVO: ");
+                receber_msg(jogador_atual, buffer_rede);
+                int id_alvo = buscar_territorio_por_nome(buffer_rede);
+
+                if (id_alvo != -1 && territorios[id_alvo].dono != jogador_atual && sao_vizinhos(id_origem, id_alvo)) {
+                    int resultado = luta_tropas_rede(territorios[id_alvo].dono, jogador_atual, &d_def, &d_atk);
+                    sprintf(msg_temp, "\n[BATALHA] %s ataca %s! Atacante: %d | Defensor: %d\n", 
+                            territorios[id_origem].nome, territorios[id_alvo].nome, d_atk, d_def);
+                    broadcast(msg_temp);
+
+                    if (resultado == jogador_atual) {
+                        territorios[id_alvo].tropas--;
+                        if (territorios[id_alvo].tropas <= 0) conquistar_territorio_rede(jogador_atual, id_origem, id_alvo);
+                    } else {
+                        territorios[id_origem].tropas--;
+                        broadcast("Defesa venceu o round!\n");
+                    }
+                } else { enviar_msg(jogador_atual, "Alvo invalido ou nao vizinho!\n"); }
+            } else { enviar_msg(jogador_atual, "Origem invalida ou pouca tropa!\n"); }
+        }
+
+        // --- 3. FASE DE FORTIFICAÇÃO (MOVIMENTAÇÃO) ---
+        enviar_msg(jogador_atual, "\n--- FORTIFICACAO --- Deseja mover tropas entre seus territorios? (S/N): ");
+        receber_msg(jogador_atual, buffer_rede);
+
+        if (strcasecmp(buffer_rede, "S") == 0) {
+            enviar_msg(jogador_atual, "Mover de (ORIGEM): ");
+            receber_msg(jogador_atual, buffer_rede);
+            int id_o = buscar_territorio_por_nome(buffer_rede);
+
+            enviar_msg(jogador_atual, "Mover para (DESTINO): ");
+            receber_msg(jogador_atual, buffer_rede);
+            int id_d = buscar_territorio_por_nome(buffer_rede);
+
+            if (id_o != -1 && id_d != -1 && territorios[id_o].dono == jogador_atual && 
+                territorios[id_d].dono == jogador_atual && sao_vizinhos(id_o, id_d) && territorios[id_o].tropas > 1) {
+                
+                sprintf(msg_temp, "Quantas tropas mover (Max: %d)? ", territorios[id_o].tropas - 1);
+                enviar_msg(jogador_atual, msg_temp);
+                receber_msg(jogador_atual, buffer_rede);
+                int qtd = atoi(buffer_rede);
+
+                if (qtd > 0 && qtd < territorios[id_o].tropas) {
+                    territorios[id_o].tropas -= qtd;
+                    territorios[id_d].tropas += qtd;
+                    enviar_msg(jogador_atual, "Tropas remanejadas!\n");
+                }
+            } else {
+                enviar_msg(jogador_atual, "Movimento invalido! Verifique se sao vizinhos e se voce eh o dono.\n");
+            }
+        }
+
+// --- 4. VERIFICAÇÃO DE VITÓRIA ---
+        if (verificar_vitoria(jogador_atual)) {
+            int obj_idx = -1;
+            for(int k=0; k<TOTAL_OBJETIVOS; k++) if(Objetivos[k].dono == jogador_atual) obj_idx = k;
+            
+            sprintf(msg_temp, "\n==============================================\n"
+                              "VITORIA! O JOGADOR %d VENCEU O JOGO!\n"
+                              "OBJETIVO CONCLUIDO: %s\n"
+                              "==============================================\n", 
+                    jogador_atual, Objetivos[obj_idx].texto);
+            broadcast(msg_temp);
+            break; // Sai do loop e encerra o servidor
+        }
+
+        // --- 5. FINALIZAÇÃO ---
+// --- 5. FINALIZAÇÃO ---
+        finalizar_rodada(jogador_atual);
+        
+        // Adicione isso para o turno passar (ou resetar no 0 em caso de 1 jogador)
+        jogador_atual = (jogador_atual + 1) % MAX_JOGADORES;
+        sleep(1);
+    }
+
     return 0;
 }
